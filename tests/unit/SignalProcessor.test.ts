@@ -28,7 +28,7 @@ describe("SignalProcessor — deduplication", () => {
 
     const bridge = makeSuccessBridge();
     const processor = new SignalProcessor();
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm, bridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm, bridge);
 
     // Only the 2 remaining IDs should have been delivered
     const deliverCalls = vi.mocked(bridge.deliver).mock.calls;
@@ -47,15 +47,15 @@ describe("SignalProcessor — deduplication", () => {
     const processor = new SignalProcessor();
 
     const hwm1 = new HwmStore(HWM_FILE);
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm1, bridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm1, bridge);
+    const firstRunCallCount = vi.mocked(bridge.deliver).mock.calls.length;
 
     const hwm2 = new HwmStore(HWM_FILE);
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm2, bridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm2, bridge);
+    const totalCallCount = vi.mocked(bridge.deliver).mock.calls.length;
 
-    const callCount = vi.mocked(bridge.deliver).mock.calls.length;
-    // Second run should produce no deliver calls
-    const secondRunCalls = vi.mocked(bridge.deliver).mock.calls.slice(callCount);
-    expect(secondRunCalls.length).toBe(0);
+    // Second run must not have triggered any new deliver calls
+    expect(totalCallCount).toBe(firstRunCallCount);
   });
 });
 
@@ -83,7 +83,7 @@ describe("SignalProcessor — taxonomy validation", () => {
     const bridge = makeSuccessBridge();
     const processor = new SignalProcessor();
 
-    await expect(processor.run(badAdapter, hwm, bridge)).rejects.toThrow(
+    await expect(processor.run(badAdapter, {}, hwm, bridge)).rejects.toThrow(
       TaxonomyValidationError
     );
   });
@@ -102,7 +102,7 @@ describe("SignalProcessor — HWM commit guard", () => {
     const processor = new SignalProcessor();
 
     await expect(
-      processor.run(new MockSoftwareTestStrategyAdapter(), hwm, failBridge)
+      processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm, failBridge)
     ).rejects.toThrow("Network failure");
 
     // HWM file should not exist / cursor should still be null

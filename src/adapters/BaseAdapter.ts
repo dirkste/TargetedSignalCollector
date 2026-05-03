@@ -27,6 +27,8 @@ export abstract class BaseAdapter implements SourceAdapter {
       .replace(/&lt;/gi, "<")
       .replace(/&gt;/gi, ">")
       .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      .replace(/&#39;/g, "'")
       .replace(/\s{2,}/g, " ")
       .trim();
   }

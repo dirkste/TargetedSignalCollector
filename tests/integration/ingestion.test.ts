@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { existsSync, unlinkSync, readFileSync } from "node:fs";
+import { existsSync, unlinkSync } from "node:fs";
 import { SignalProcessor } from "../../src/engine/SignalProcessor.js";
 import { HwmStore } from "../../src/state/HwmStore.js";
 import { MockSoftwareTestStrategyAdapter } from "../../src/adapters/MockSoftwareTestStrategyAdapter.js";
@@ -26,7 +26,7 @@ describe("Integration: full ingestion loop (happy path)", () => {
     const hwm = new HwmStore(HWM_FILE);
     const processor = new SignalProcessor();
 
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm, bridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm, bridge);
 
     // Bridge was called (at least once — may be batched)
     expect(vi.mocked(bridge.deliver)).toHaveBeenCalled();
@@ -59,12 +59,12 @@ describe("Integration: idempotency (second run delivers nothing)", () => {
 
     // First run
     const hwm1 = new HwmStore(HWM_FILE);
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm1, bridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm1, bridge);
     const firstRunCallCount = vi.mocked(bridge.deliver).mock.calls.length;
 
     // Second run with fresh HwmStore (but same persisted file)
     const hwm2 = new HwmStore(HWM_FILE);
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm2, bridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm2, bridge);
     const totalCallCount = vi.mocked(bridge.deliver).mock.calls.length;
 
     expect(totalCallCount).toBe(firstRunCallCount); // no new calls on second run
@@ -86,7 +86,7 @@ describe("Integration: error recovery — HWM not advanced on bridge failure", (
     const processor = new SignalProcessor();
 
     await expect(
-      processor.run(new MockSoftwareTestStrategyAdapter(), hwm, failBridge)
+      processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm, failBridge)
     ).rejects.toThrow(BridgeDeliveryError);
 
     // HWM file must NOT have been created / modified
@@ -102,13 +102,13 @@ describe("Integration: error recovery — HWM not advanced on bridge failure", (
     const hwm1 = new HwmStore(HWM_FILE);
     const processor = new SignalProcessor();
     await expect(
-      processor.run(new MockSoftwareTestStrategyAdapter(), hwm1, failBridge)
+      processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm1, failBridge)
     ).rejects.toThrow();
 
     // Second attempt: succeeds — should still deliver all 5 signals
     const successBridge = makeSuccessBridge();
     const hwm2 = new HwmStore(HWM_FILE);
-    await processor.run(new MockSoftwareTestStrategyAdapter(), hwm2, successBridge);
+    await processor.run(new MockSoftwareTestStrategyAdapter(), {}, hwm2, successBridge);
 
     const allDelivered = vi
       .mocked(successBridge.deliver)

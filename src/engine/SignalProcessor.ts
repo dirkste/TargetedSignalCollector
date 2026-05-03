@@ -1,4 +1,4 @@
-import type { SourceAdapter, UniversalSignal } from "../types/index.js";
+import type { SourceAdapter, SecretDict, UniversalSignal } from "../types/index.js";
 import type { HwmStore } from "../state/HwmStore.js";
 import type { BrainBridge } from "../bridge/BrainBridge.js";
 
@@ -21,10 +21,11 @@ export class TaxonomyValidationError extends Error {
 export class SignalProcessor {
   async run(
     adapter: SourceAdapter,
+    credentials: SecretDict,
     hwmStore: HwmStore,
     bridge: BrainBridge
   ): Promise<void> {
-    await adapter.connect({});
+    await adapter.connect(credentials);
 
     const processedIds = hwmStore.getProcessedIds();
     let cursor = hwmStore.getLastCursor();
@@ -67,6 +68,10 @@ export class SignalProcessor {
         for (const id of deliveredIds) {
           processedIds.add(id);
         }
+      } else {
+        // All signals in this batch were already processed — advance cursor
+        // without recording new IDs so we don't re-fetch on the next run.
+        hwmStore.commit(nextCursor, []);
       }
 
       cursor = nextCursor;
